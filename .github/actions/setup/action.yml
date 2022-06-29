@@ -1,0 +1,11 @@
+name: Setup the Environment
+description: Prepare all the Workflows/Actions to run by initializing Node and installing dependencies
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v2
+      with:
+        node-version: "14"
+        cache: "npm"
+    - run: npm ci
+      shell: bash
