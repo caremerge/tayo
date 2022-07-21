@@ -8,7 +8,9 @@ const strings = {
   INVALID_TIMESTAMP_ERROR: 'Invalid timestamp',
   NO_TIMESTAMP_FOUND_ERROR: 'No timestamps found',
   INVALID_TIMEZONE_ERROR: 'Timezone not found in moment database',
-  SERVER_ERROR: 'A server error occurred'
+  SERVER_ERROR: 'A server error occurred',
+  AQI_TOKEN: '4f39e273ebb1af2f430f0435294f6df6f23df817',
+  BASE_URL: 'https://api.waqi.info/feed/'
 };
 
 const timestampIsValid = function(timestamp) {
@@ -56,6 +58,22 @@ const sendResponse = async function(req, res, msg) {
     ...msg
   });
 };
+
+async function searchResult(keyword) {
+  let url = strings.BASE_URL + keyword + "/?token=" + strings.AQI_TOKEN;
+  try {
+    const { data: result } = await axios.get(url);
+    if (!result || result.status != "ok") {
+      return result.data;
+    }
+    else if (result.data.length == 0 || result.data.aqi == '-') {
+      return "Sorry, there is no result for provided city!";
+    }
+    return result.data.aqi;
+  } catch (error) {
+    console.log(error);
+  }
+}
 
 const tsController = async function(req, res) {
   const text = req.body.text;
@@ -121,7 +139,24 @@ const tsController = async function(req, res) {
 };
 
 const weatherController = async function(req, res) {
-  return sendResponse(req, res, {text: req.body.text});
+  const text = req.body.text;
+  let result;
+  if (text == 'here') {
+    try {
+      const {data:response} = await axios.get(strings.BASE_URL + "here/?token=" + strings.AQI_TOKEN)
+      return sendResponse(req, res, {text: response.data.aqi});
+    } catch (error) {
+      console.log(error)
+    } 
+  }
+  else {
+    if (text != "") {
+      result = await searchResult(text);
+    } else {
+      result = "Please enter valid city!"
+    }
+    return sendResponse(req, res, {text: result});
+  }
 }
 
 /* GET home page. */
