@@ -10,8 +10,43 @@ const strings = {
   INVALID_TIMEZONE_ERROR: 'Timezone not found in moment database',
   SERVER_ERROR: 'A server error occurred',
   AQI_TOKEN: '4f39e273ebb1af2f430f0435294f6df6f23df817',
-  BASE_URL: 'https://api.waqi.info/feed/'
+  BASE_URL: 'https://api.waqi.info/feed/',
+  INVALID_CITY_ERROR: "Invalid city/station",
+  AQI_NOT_FOUND_ERROR: "Sorry, no results available for provided city/station!",
 };
+
+const aqiLevels = [
+  {
+    level: "Good",
+    description:
+      "Air quality is considered satisfactory, and air pollution poses little or no risk",
+  },
+  {
+    level: "Moderate",
+    description:
+      "Air quality is acceptable; however, for some pollutants there may be a moderate health concern for a very small number of people who are unusually sensitive to air pollution.",
+  },
+  {
+    level: "Unhealthy for Sensitive Groups",
+    description:
+      "Members of sensitive groups may experience health effects. The general public is not likely to be affected.",
+  },
+  {
+    level: "Unhealthy",
+    description:
+      "Everyone may begin to experience health effects; members of sensitive groups may experience more serious health effects",
+  },
+  {
+    level: "Very Unhealthy",
+    description:
+      "Health warnings of emergency conditions. The entire population is more likely to be affected.",
+  },
+  {
+    level: "Hazardous",
+    description:
+      "Health alert: everyone may experience more serious health effects",
+  },
+];
 
 const timestampIsValid = function(timestamp) {
   if (isNaN(timestamp)) {
@@ -58,22 +93,6 @@ const sendResponse = async function(req, res, msg) {
     ...msg
   });
 };
-
-async function searchResult(keyword) {
-  let url = strings.BASE_URL + keyword + "/?token=" + strings.AQI_TOKEN;
-  try {
-    const { data: result } = await axios.get(url);
-    if (!result || result.status != "ok") {
-      return result.data;
-    }
-    else if (result.data.length == 0 || result.data.aqi == '-') {
-      return "Sorry, there is no result for provided city!";
-    }
-    return result.data.aqi;
-  } catch (error) {
-    console.log(error);
-  }
-}
 
 const tsController = async function(req, res) {
   const text = req.body.text;
@@ -138,26 +157,52 @@ const tsController = async function(req, res) {
   return sendResponse(req, res, {text: '```' + output + '```'});
 };
 
+const formatAQIResponse = function (result, text) {
+  let aqi = parseInt(result);
+  switch (true) {
+    case aqi >= 0 && aqi <= 50:
+      return `:large_green_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[0]["level"]}*\n\n${aqiLevels[0]["description"]}`;
+    case aqi >= 51 && aqi <= 100:
+      return `:large_yellow_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[1]["level"]}*\n\n${aqiLevels[1]["description"]}`;
+    case aqi >= 101 && aqi <= 150:
+      return `:large_orange_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[2]["level"]}*\n\n${aqiLevels[2]["description"]}`;
+    case aqi >= 151 && aqi <= 200:
+      return `:red_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[3]["level"]}*\n\n${aqiLevels[3]["description"]}`;
+    case aqi >= 201 && aqi <= 300:
+      return `:large_purple_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[4]["level"]}*\n\n${aqiLevels[4]["description"]}`;
+    case aqi >= 301:
+      return `:large_brown_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[5]["level"]}*\n\n${aqiLevels[5]["description"]}`;
+    default:
+      return strings.AQI_NOT_FOUND_ERROR;
+  }
+};
+
+async function getAQI(keyword) {
+  let url = strings.BASE_URL + keyword + '/?token=' + strings.AQI_TOKEN;
+  try {
+    const { data: result } = await axios.get(url);
+    if (!result || result.status != 'ok') {
+      return strings.INVALID_CITY_ERROR;
+    } else if (result.data.length == 0 || result.data.aqi == '-') {
+      return strings.AQI_NOT_FOUND_ERROR;
+    }
+    return formatAQIResponse(result.data.aqi, keyword);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 const weatherController = async function(req, res) {
   const text = req.body.text;
+  text = text.trim().toLowerCase();
   let result;
-  if (text == 'here') {
-    try {
-      const {data:response} = await axios.get(strings.BASE_URL + "here/?token=" + strings.AQI_TOKEN)
-      return sendResponse(req, res, {text: response.data.aqi});
-    } catch (error) {
-      console.log(error)
-    } 
+  if (text != "") {
+    result = await getAQI(text);
+  } else {
+    result = strings.INVALID_CITY_ERROR;
   }
-  else {
-    if (text != "") {
-      result = await searchResult(text);
-    } else {
-      result = "Please enter valid city!"
-    }
-    return sendResponse(req, res, {text: result});
-  }
-}
+  return sendResponse(req, res, {text: result});
+};
 
 /* GET home page. */
 router.post('/', async function(req, res) {
