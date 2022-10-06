@@ -192,7 +192,7 @@ async function getAQI(keyword) {
   }
 };
 
-const weatherController = async function(req, res) {
+const aqiController = async function(req, res) {
   const text = req.body.text;
   text = text.trim().toLowerCase();
   let result;
@@ -212,8 +212,8 @@ router.post('/', async function(req, res) {
     switch(command) {
       case '/ts':
         return tsController(req, res);
-      case '/weather':
-        return weatherController(req, res);
+      case '/aqi':
+        return aqiController(req, res);
       default:
         return sendResponse(req, res, {text: 'Your slash command was not recognized by Tayo!'});
     }
