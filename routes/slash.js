@@ -8,8 +8,45 @@ const strings = {
   INVALID_TIMESTAMP_ERROR: 'Invalid timestamp',
   NO_TIMESTAMP_FOUND_ERROR: 'No timestamps found',
   INVALID_TIMEZONE_ERROR: 'Timezone not found in moment database',
-  SERVER_ERROR: 'A server error occurred'
+  SERVER_ERROR: 'A server error occurred',
+  AQI_TOKEN: '4f39e273ebb1af2f430f0435294f6df6f23df817',
+  BASE_URL: 'https://api.waqi.info/feed/',
+  INVALID_CITY_ERROR: "Invalid city/station",
+  AQI_NOT_FOUND_ERROR: "Sorry, no results available for provided city/station!",
 };
+
+const aqiLevels = [
+  {
+    level: "Good",
+    description:
+      "Air quality is considered satisfactory, and air pollution poses little or no risk",
+  },
+  {
+    level: "Moderate",
+    description:
+      "Air quality is acceptable; however, for some pollutants there may be a moderate health concern for a very small number of people who are unusually sensitive to air pollution.",
+  },
+  {
+    level: "Unhealthy for Sensitive Groups",
+    description:
+      "Members of sensitive groups may experience health effects. The general public is not likely to be affected.",
+  },
+  {
+    level: "Unhealthy",
+    description:
+      "Everyone may begin to experience health effects; members of sensitive groups may experience more serious health effects",
+  },
+  {
+    level: "Very Unhealthy",
+    description:
+      "Health warnings of emergency conditions. The entire population is more likely to be affected.",
+  },
+  {
+    level: "Hazardous",
+    description:
+      "Health alert: everyone may experience more serious health effects",
+  },
+];
 
 const timestampIsValid = function(timestamp) {
   if (isNaN(timestamp)) {
@@ -120,9 +157,52 @@ const tsController = async function(req, res) {
   return sendResponse(req, res, {text: '```' + output + '```'});
 };
 
-const weatherController = async function(req, res) {
-  return sendResponse(req, res, {text: req.body.text});
-}
+const formatAQIResponse = function (result, text) {
+  let aqi = parseInt(result);
+  switch (true) {
+    case aqi >= 0 && aqi <= 50:
+      return `:large_green_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[0]["level"]}*\n\n${aqiLevels[0]["description"]}`;
+    case aqi >= 51 && aqi <= 100:
+      return `:large_yellow_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[1]["level"]}*\n\n${aqiLevels[1]["description"]}`;
+    case aqi >= 101 && aqi <= 150:
+      return `:large_orange_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[2]["level"]}*\n\n${aqiLevels[2]["description"]}`;
+    case aqi >= 151 && aqi <= 200:
+      return `:red_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[3]["level"]}*\n\n${aqiLevels[3]["description"]}`;
+    case aqi >= 201 && aqi <= 300:
+      return `:large_purple_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[4]["level"]}*\n\n${aqiLevels[4]["description"]}`;
+    case aqi >= 301:
+      return `:large_brown_circle: *${aqi}: Air Quality in ${text} is ${aqiLevels[5]["level"]}*\n\n${aqiLevels[5]["description"]}`;
+    default:
+      return strings.AQI_NOT_FOUND_ERROR;
+  }
+};
+
+async function getAQI(keyword) {
+  let url = strings.BASE_URL + keyword + '/?token=' + strings.AQI_TOKEN;
+  try {
+    const { data: result } = await axios.get(url);
+    if (!result || result.status != 'ok') {
+      return strings.INVALID_CITY_ERROR;
+    } else if (result.data.length == 0 || result.data.aqi == '-') {
+      return strings.AQI_NOT_FOUND_ERROR;
+    }
+    return formatAQIResponse(result.data.aqi, keyword);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const aqiController = async function(req, res) {
+  const text = req.body.text;
+  text = text.trim().toLowerCase();
+  let result;
+  if (text != "") {
+    result = await getAQI(text);
+  } else {
+    result = strings.INVALID_CITY_ERROR;
+  }
+  return sendResponse(req, res, {text: result});
+};
 
 /* GET home page. */
 router.post('/', async function(req, res) {
@@ -132,8 +212,8 @@ router.post('/', async function(req, res) {
     switch(command) {
       case '/ts':
         return tsController(req, res);
-      case '/weather':
-        return weatherController(req, res);
+      case '/aqi':
+        return aqiController(req, res);
       default:
         return sendResponse(req, res, {text: 'Your slash command was not recognized by Tayo!'});
     }
