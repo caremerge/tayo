@@ -18,6 +18,10 @@ const binaryMimeTypes = [
 const server = awsServerlessExpress.createServer(app, null, binaryMimeTypes)
 
 exports.handler = async (event, context) => {
-  console.log('request received for path: ', event.path);
-  return awsServerlessExpress.proxy(server, event, context, 'PROMISE').promise;
+  if (event.path) {
+    console.log('request received for path: ', event.path);
+    return awsServerlessExpress.proxy(server, event, context, 'PROMISE').promise;
+  } else { // assuming that this lambda method is triggered by EventBridge rule
+    // handle eventbridge rule
+  }
 };
