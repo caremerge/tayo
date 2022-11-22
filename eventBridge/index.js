@@ -2,7 +2,7 @@ const aqi = require("../modules/aqi.js");
 
 async function postOnSlack(aqiResponse) {
   let url =
-    process.env.AQI_SLACK_HOOK;
+    process.env.AQI_WEBHOOK;
   try {
     response = await axios.post(
       url,
