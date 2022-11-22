@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 const strings = {
-  AQI_TOKEN: "4f39e273ebb1af2f430f0435294f6df6f23df817",
+  AQI_TOKEN: process.env.AQI_API_TOKEN,
   BASE_URL: "https://api.waqi.info/feed/",
   INVALID_CITY_ERROR: "Invalid city/station",
   AQI_NOT_FOUND_ERROR: "Sorry, no results available for provided city/station!",
