@@ -23,7 +23,7 @@ async function postOnSlack(aqiResponse) {
 exports.aqiPoster = async function (cityList) {
   let aqiList = "";
   for (let city of cityList) {
-    aqiList += (await getAQI(city)) + "\n\n\n";
+    aqiList += (await aqi.getAQI(city)) + "\n\n\n";
   }
   postOnSlack(aqiList);
 };
