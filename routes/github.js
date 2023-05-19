@@ -59,7 +59,7 @@ router.post('/push', async function(req, res, next) {
         method: 'post',
         url: process.env.HOTFIX_WEBHOOK,
         data: {
-          text: '<!channel>'
+          text: 'Repo: ' + repo.full_name  +  ' <!channel>'
         }
       });
       if (response.status !== 200) {
